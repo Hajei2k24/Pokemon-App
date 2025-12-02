@@ -2,10 +2,9 @@ import React from 'react'
 import { NavigationContainer } from '@react-navigation/native'
 import MyStack from './src/navigation/MyStack'
 
-
 const App = () => {
     return (
-      <NavigationContainer>
+      <NavigationContainer> 
         <MyStack/>
       </NavigationContainer>
     )

@@ -60,7 +60,10 @@ const HomeScreen = ({navigation}) => {
               <Text style={styles.actionSubtitle}>Start Battle</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.actionCard, styles.blueCard]}>
+            <TouchableOpacity 
+              style={[styles.actionCard, styles.blueCard]}
+              onPress={() => navigation.navigate('Pokedex')}
+            >
               <Text style={styles.actionIcon}>📦</Text>
               <Text style={styles.actionTitle}>Pokédex</Text>
               <Text style={styles.actionSubtitle}>View Collection</Text>
