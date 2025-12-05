@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run android:*)",
+      "Bash(dir:*)",
+      "Bash(gradlew.bat app:installDebug:*)",
+      "Bash(.gradlew.bat:*)",
+      "Bash(cmd /c gradlew.bat app:installDebug)",
+      "Bash(adb devices:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(cmd /c \"gradlew.bat app:installDebug\")",
+      "Bash(./gradlew app:installDebug:*)",
+      "Bash(adb kill-server:*)",
+      "Bash(adb start-server:*)",
+      "Bash(npx react-native start)",
+      "Bash(adb reverse:*)",
+      "Bash(npm install:*)",
+      "Bash(./gradlew clean:*)",
+      "Bash(adb shell:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

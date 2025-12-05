@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "888612629230",
+    "project_id": "react-native-dream-671d2",
+    "storage_bucket": "react-native-dream-671d2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888612629230:android:c9128e029dcd7b348ea1ff",
+        "android_client_info": {
+          "package_name": "com.pokemonproject"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAMN_RIn1mB3gTW-zP1mvDyTYyzP6WvIo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
