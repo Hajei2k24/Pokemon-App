@@ -85,6 +85,18 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        multiDexEnabled true
+    }
+
+    configurations.all {
+        exclude group: 'com.android.support', module: 'support-compat'
+        exclude group: 'com.android.support', module: 'support-v4'
+
+        resolutionStrategy {
+            force 'com.google.android.gms:play-services-location:21.3.0'
+            force 'com.google.android.gms:play-services-maps:19.0.0'
+            force 'com.google.android.gms:play-services-base:18.5.0'
+        }
     }
     signingConfigs {
         debug {
@@ -111,6 +123,11 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+
+    // Google Play Services for Geolocation and Maps - Updated versions for compatibility
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
+    implementation 'com.google.android.gms:play-services-maps:19.0.0'
+    implementation 'com.google.android.gms:play-services-base:18.5.0'
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

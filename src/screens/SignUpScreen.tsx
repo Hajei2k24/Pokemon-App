@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, Text, View, ActivityIndicator, TouchableOpacity } from 'react-native'
+import { Alert, StyleSheet, Text, View, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native'
 import React, { useState } from 'react'
 import MyButton from '../components/MyButton'
 import MyTextInput from '../components/MyTextInput'
@@ -9,6 +9,8 @@ const SignUpScreen = ({navigation}) => {
     const [password, setPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
     const [loading, setLoading] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
     const signUpTestFn = async () => {
         // Validation
@@ -91,27 +93,47 @@ const SignUpScreen = ({navigation}) => {
                         </View>
                     </View>
 
-                    <MyTextInput 
-                        value={email} 
-                        onChangeText={text => setEmail(text)} 
-                        placeholder="Email Address"
+                    <MyTextInput
+                        value={email}
+                        onChangeText={text => setEmail(text)}
+                        placeholder="Username"
                         keyboardType="email-address"
                         autoCapitalize="none"
                     />
-                    
-                    <MyTextInput 
-                        value={password} 
-                        onChangeText={text => setPassword(text)} 
-                        placeholder="Password (min 6 characters)" 
-                        secureTextEntry
-                    />
-                    
-                    <MyTextInput 
-                        value={confirmPassword}  
-                        onChangeText={text => setConfirmPassword(text)} 
-                        placeholder="Confirm Password" 
-                        secureTextEntry
-                    />
+
+                    <View style={styles.passwordContainer}>
+                        <TextInput
+                            style={styles.passwordInput}
+                            value={password}
+                            onChangeText={text => setPassword(text)}
+                            placeholder="Password"
+                            secureTextEntry={!showPassword}
+                            autoCapitalize="none"
+                        />
+                        <TouchableOpacity
+                            style={styles.eyeIcon}
+                            onPress={() => setShowPassword(!showPassword)}>
+                            <Text style={styles.eyeIconText}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                        </TouchableOpacity>
+                        <View style={styles.passwordBorder}/>
+                    </View>
+
+                    <View style={styles.passwordContainer}>
+                        <TextInput
+                            style={styles.passwordInput}
+                            value={confirmPassword}
+                            onChangeText={text => setConfirmPassword(text)}
+                            placeholder="Confirm Password"
+                            secureTextEntry={!showConfirmPassword}
+                            autoCapitalize="none"
+                        />
+                        <TouchableOpacity
+                            style={styles.eyeIcon}
+                            onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                            <Text style={styles.eyeIconText}>{showConfirmPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                        </TouchableOpacity>
+                        <View style={styles.passwordBorder}/>
+                    </View>
 
                     <View style={styles.loginContainer}>
                         <Text style={styles.loginText}>Already Have An Account?</Text>
@@ -242,6 +264,33 @@ const styles = StyleSheet.create({
     },
     loader: {
         marginTop: 15,
+    },
+    passwordContainer: {
+        height: 50,
+        width: "100%",
+        justifyContent: "center",
+        paddingHorizontal: 10,
+        marginBottom: 20,
+        position: 'relative',
+    },
+    passwordInput: {
+        color: "black",
+        paddingRight: 40,
+    },
+    passwordBorder: {
+        width: "100%",
+        backgroundColor: "gray",
+        height: 1,
+        alignSelf: "center",
+    },
+    eyeIcon: {
+        position: 'absolute',
+        right: 10,
+        top: 15,
+        padding: 5,
+    },
+    eyeIconText: {
+        fontSize: 20,
     },
     decorativeCircle1: {
         position: 'absolute',

@@ -43,6 +43,7 @@ const ARCameraScreen = () => {
   const [gallery, setGallery] = useState<CapturedPhoto[]>([]);
   const [showGallery, setShowGallery] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<CapturedPhoto | null>(null);
 
   const camera = useRef<Camera>(null);
   const device = useCameraDevice('back');
@@ -51,12 +52,24 @@ const ARCameraScreen = () => {
     requestPermissions();
     loadGallery();
 
-    // Setup voice recognition
-    Voice.onSpeechResults = onSpeechResults;
-    Voice.onSpeechError = onSpeechError;
+    // Setup voice recognition with error handling
+    const setupVoice = async () => {
+      try {
+        Voice.onSpeechResults = onSpeechResults;
+        Voice.onSpeechError = onSpeechError;
+      } catch (error) {
+        console.log('Voice setup error:', error);
+      }
+    };
+
+    setupVoice();
 
     return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
+      try {
+        Voice.destroy().then(Voice.removeAllListeners).catch((e) => console.log('Voice cleanup error:', e));
+      } catch (error) {
+        console.log('Voice cleanup error:', error);
+      }
     };
   }, []);
 
@@ -168,10 +181,20 @@ const ARCameraScreen = () => {
 
   const saveToGallery = async (photoPath: string, pokemon: Pokemon) => {
     try {
+      // Download pokemon sprite and save it locally
+      const pokemonImagePath = `${RNFS.DocumentDirectoryPath}/pokemon_${Date.now()}.png`;
+      await RNFS.downloadFile({
+        fromUrl: pokemon.sprite,
+        toFile: pokemonImagePath,
+      }).promise;
+
       const capturedPhoto: CapturedPhoto = {
         id: Date.now().toString(),
         uri: photoPath,
-        pokemon: pokemon,
+        pokemon: {
+          ...pokemon,
+          sprite: pokemonImagePath, // Store local path instead of URL
+        },
         timestamp: Date.now(),
       };
 
@@ -210,6 +233,56 @@ const ARCameraScreen = () => {
     setSearchQuery('');
   };
 
+  const deletePhoto = async (photo: CapturedPhoto) => {
+    Alert.alert(
+      'Delete Photo',
+      `Are you sure you want to delete this photo of ${photo.pokemon.name}?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Delete the photo file
+              const photoExists = await RNFS.exists(photo.uri);
+              if (photoExists) {
+                await RNFS.unlink(photo.uri);
+              }
+
+              // Delete the pokemon sprite file
+              const spriteExists = await RNFS.exists(photo.pokemon.sprite);
+              if (spriteExists) {
+                await RNFS.unlink(photo.pokemon.sprite);
+              }
+
+              // Remove from gallery
+              const newGallery = gallery.filter(item => item.id !== photo.id);
+              setGallery(newGallery);
+
+              // Update storage
+              const galleryPath = `${RNFS.DocumentDirectoryPath}/pokemon_gallery.json`;
+              await RNFS.writeFile(galleryPath, JSON.stringify(newGallery), 'utf8');
+
+              // Close fullscreen if open
+              if (fullscreenImage?.id === photo.id) {
+                setFullscreenImage(null);
+              }
+
+              Alert.alert('Success', 'Photo deleted successfully');
+            } catch (error) {
+              console.error('Error deleting photo:', error);
+              Alert.alert('Error', 'Failed to delete photo');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (!hasPermission) {
     return (
       <View style={styles.container}>
@@ -243,11 +316,24 @@ const ARCameraScreen = () => {
               keyExtractor={item => item.id}
               renderItem={({item}) => (
                 <View style={styles.galleryItem}>
-                  <Image
-                    source={{uri: `file://${item.uri}`}}
-                    style={styles.galleryImage}
-                  />
-                  <Text style={styles.galleryPokemonName}>{item.pokemon.name}</Text>
+                  <TouchableOpacity
+                    style={styles.galleryImageContainer}
+                    onPress={() => setFullscreenImage(item)}>
+                    <Image
+                      source={{uri: `file://${item.uri}`}}
+                      style={styles.galleryImage}
+                    />
+                    <Image
+                      source={{uri: `file://${item.pokemon.sprite}`}}
+                      style={styles.galleryPokemonOverlay}
+                    />
+                    <Text style={styles.galleryPokemonName}>{item.pokemon.name}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => deletePhoto(item)}>
+                    <Text style={styles.deleteButtonText}>🗑️</Text>
+                  </TouchableOpacity>
                 </View>
               )}
               ListEmptyComponent={
@@ -261,6 +347,46 @@ const ARCameraScreen = () => {
               <Text style={styles.buttonText}>Close</Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+
+      {/* Fullscreen Image Modal */}
+      <Modal visible={fullscreenImage !== null} animationType="fade" transparent={true}>
+        <View style={styles.fullscreenModal}>
+          <TouchableOpacity
+            style={styles.fullscreenClose}
+            onPress={() => setFullscreenImage(null)}>
+            <Text style={styles.fullscreenCloseText}>✕</Text>
+          </TouchableOpacity>
+
+          {fullscreenImage && (
+            <>
+              <TouchableOpacity
+                style={styles.fullscreenDeleteButton}
+                onPress={() => deletePhoto(fullscreenImage)}>
+                <Text style={styles.fullscreenDeleteText}>🗑️ Delete</Text>
+              </TouchableOpacity>
+
+              <Image
+                source={{uri: `file://${fullscreenImage.uri}`}}
+                style={styles.fullscreenImage}
+                resizeMode="contain"
+              />
+              <Image
+                source={{uri: `file://${fullscreenImage.pokemon.sprite}`}}
+                style={styles.fullscreenPokemonOverlay}
+                resizeMode="contain"
+              />
+              <View style={styles.fullscreenInfo}>
+                <Text style={styles.fullscreenPokemonName}>
+                  {fullscreenImage.pokemon.name.toUpperCase()}
+                </Text>
+                <Text style={styles.fullscreenDate}>
+                  {new Date(fullscreenImage.timestamp).toLocaleDateString()}
+                </Text>
+              </View>
+            </>
+          )}
         </View>
       </Modal>
 
@@ -586,6 +712,9 @@ const styles = StyleSheet.create({
   galleryItem: {
     flex: 1,
     margin: 5,
+    position: 'relative',
+  },
+  galleryImageContainer: {
     backgroundColor: '#f0f0f0',
     borderRadius: 10,
     overflow: 'hidden',
@@ -603,6 +732,26 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textTransform: 'capitalize',
   },
+  deleteButton: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: '#ff4444',
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  deleteButtonText: {
+    fontSize: 18,
+  },
   emptyText: {
     textAlign: 'center',
     fontSize: 16,
@@ -615,6 +764,93 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 8,
     marginTop: 20,
+  },
+  galleryPokemonOverlay: {
+    position: 'absolute',
+    top: '35%',
+    left: '50%',
+    width: 80,
+    height: 80,
+    transform: [{translateX: -40}, {translateY: -40}],
+  },
+  fullscreenModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenClose: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 25,
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenCloseText: {
+    color: '#fff',
+    fontSize: 30,
+    fontWeight: 'bold',
+  },
+  fullscreenDeleteButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 10,
+    backgroundColor: '#ff4444',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  fullscreenDeleteText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  fullscreenImage: {
+    width: width,
+    height: height,
+  },
+  fullscreenPokemonOverlay: {
+    position: 'absolute',
+    top: '40%',
+    left: '50%',
+    width: 250,
+    height: 250,
+    transform: [{translateX: -125}, {translateY: -125}],
+  },
+  fullscreenInfo: {
+    position: 'absolute',
+    bottom: 60,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 20,
+  },
+  fullscreenPokemonName: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: 'bold',
+    textShadowColor: '#000',
+    textShadowOffset: {width: 2, height: 2},
+    textShadowRadius: 5,
+  },
+  fullscreenDate: {
+    color: '#ccc',
+    fontSize: 16,
+    marginTop: 5,
   },
 });
 

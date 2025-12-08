@@ -7,6 +7,9 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <!-- Background location permission for Android 10+ (if needed) -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
     <!-- Camera Permissions -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -36,6 +39,12 @@
       android:supportsRtl="true"
       tools:replace="android:appComponentFactory"
       android:appComponentFactory="androidx.core.app.CoreComponentFactory">
+
+      <!-- Google Maps API Key -->
+      <meta-data
+        android:name="com.google.android.geo.API_KEY"
+        android:value="AIzaSyA8pv9IpjZRTxCCwMup3X2CMo5pb3zikFU"/>
+
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

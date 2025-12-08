@@ -92,7 +92,8 @@ const GeolocationScreen = () => {
   const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
       try {
-        const granted = await PermissionsAndroid.request(
+        // Request both FINE and COARSE location permissions for better compatibility
+        const fineLocationGranted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
             title: 'Location Permission',
@@ -102,9 +103,33 @@ const GeolocationScreen = () => {
             buttonPositive: 'OK',
           }
         );
-        setHasPermission(granted === PermissionsAndroid.RESULTS.GRANTED);
+
+        const coarseLocationGranted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+          {
+            title: 'Location Permission',
+            message: 'This app needs access to your location for Pokémon hunting',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+
+        const hasPermission =
+          fineLocationGranted === PermissionsAndroid.RESULTS.GRANTED ||
+          coarseLocationGranted === PermissionsAndroid.RESULTS.GRANTED;
+
+        setHasPermission(hasPermission);
+
+        if (!hasPermission) {
+          Alert.alert(
+            'Permission Denied',
+            'Location permission is required for Pokémon hunting. Please grant permission in app settings.'
+          );
+        }
       } catch (err) {
-        console.warn(err);
+        console.warn('Permission error:', err);
+        Alert.alert('Error', 'Failed to request location permission');
       }
     } else {
       setHasPermission(true);
@@ -118,32 +143,72 @@ const GeolocationScreen = () => {
       return;
     }
 
+    // Check if Geolocation is available
+    if (!Geolocation || typeof Geolocation.getCurrentPosition !== 'function') {
+      Alert.alert('Error', 'Geolocation service is not available on this device');
+      return;
+    }
+
     setLoading(true);
-    Geolocation.getCurrentPosition(
-      position => {
-        const locationData: LocationData = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          altitude: position.coords.altitude,
-          accuracy: position.coords.accuracy,
-          speed: position.coords.speed,
-          heading: position.coords.heading,
-          timestamp: position.timestamp,
-        };
-        setLocation(locationData);
-        setLoading(false);
-      },
-      error => {
-        console.error('Location error:', error);
-        setLoading(false);
-        Alert.alert('Error', `Failed to get location: ${error.message}`);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 10000,
-      }
-    );
+
+    try {
+      Geolocation.getCurrentPosition(
+        position => {
+          try {
+            const locationData: LocationData = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              altitude: position.coords.altitude,
+              accuracy: position.coords.accuracy,
+              speed: position.coords.speed,
+              heading: position.coords.heading,
+              timestamp: position.timestamp,
+            };
+            setLocation(locationData);
+            setLoading(false);
+            Alert.alert('Success', 'Location acquired! You can now start Hunt Mode.');
+          } catch (innerError) {
+            console.error('Error processing location:', innerError);
+            setLoading(false);
+            Alert.alert('Error', 'Failed to process location data');
+          }
+        },
+        error => {
+          console.error('Location error:', error);
+          setLoading(false);
+
+          let errorMessage = 'Failed to get location. ';
+
+          switch (error.code) {
+            case 1: // PERMISSION_DENIED
+              errorMessage += 'Location permission denied. Please enable location in settings.';
+              setHasPermission(false);
+              break;
+            case 2: // POSITION_UNAVAILABLE
+              errorMessage += 'Location service is unavailable. Make sure GPS is enabled.';
+              break;
+            case 3: // TIMEOUT
+              errorMessage += 'Location request timed out. Please try again.';
+              break;
+            default:
+              errorMessage += error.message || 'Unknown error occurred.';
+          }
+
+          Alert.alert('Location Error', errorMessage);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 20000, // Increased timeout
+          maximumAge: 10000,
+          forceRequestLocation: true, // Force location request on Android
+          showLocationDialog: true, // Show dialog to enable location if disabled
+        }
+      );
+    } catch (error) {
+      console.error('Geolocation error:', error);
+      setLoading(false);
+      Alert.alert('Error', 'Failed to request location. Make sure location services are enabled.');
+    }
   };
 
   const determineBiome = (lat: number, lng: number): string => {
@@ -175,46 +240,65 @@ const GeolocationScreen = () => {
   };
 
   const spawnNearbyPokemon = async () => {
-    if (!location) return;
-
-    const biome = determineBiome(location.latitude, location.longitude);
-    const possiblePokemon = getPokemonByBiome(biome);
-    const spawnCount = Math.floor(Math.random() * 3) + 2; // Spawn 2-4 Pokemon
-
-    const newPokemon: Pokemon[] = [];
-
-    for (let i = 0; i < spawnCount; i++) {
-      const randomId = possiblePokemon[Math.floor(Math.random() * possiblePokemon.length)];
-
-      try {
-        const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
-        const pokemon: Pokemon = {
-          id: response.data.id,
-          name: response.data.name,
-          sprite: response.data.sprites.front_default,
-          types: response.data.types.map((t: any) => t.type.name),
-          // Spawn within 500m radius
-          latitude: location.latitude + (Math.random() - 0.5) * 0.009,
-          longitude: location.longitude + (Math.random() - 0.5) * 0.009,
-          biome: biome,
-        };
-        newPokemon.push(pokemon);
-      } catch (error) {
-        console.error('Error fetching pokemon:', error);
-      }
+    if (!location || !location.latitude || !location.longitude) {
+      console.log('Location not available for spawning Pokemon');
+      return;
     }
 
-    setNearbyPokemon(prev => [...newPokemon, ...prev].slice(0, 20)); // Keep max 20 Pokemon
+    try {
+      const biome = determineBiome(location.latitude, location.longitude);
+      const possiblePokemon = getPokemonByBiome(biome);
+      const spawnCount = Math.floor(Math.random() * 3) + 2; // Spawn 2-4 Pokemon
 
-    // Send notification for first spawn
-    if (newPokemon.length > 0 && huntMode) {
-      PushNotification.localNotification({
-        channelId: 'pokemon-hunt',
-        title: 'Pokémon Nearby!',
-        message: `A wild ${newPokemon[0].name} appeared in the ${biome} area!`,
-        playSound: true,
-        soundName: 'default',
-      });
+      const newPokemon: Pokemon[] = [];
+
+      for (let i = 0; i < spawnCount; i++) {
+        const randomId = possiblePokemon[Math.floor(Math.random() * possiblePokemon.length)];
+
+        try {
+          const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${randomId}`, {
+            timeout: 10000, // 10 second timeout
+          });
+
+          if (response.data && response.data.sprites && response.data.sprites.front_default) {
+            const pokemon: Pokemon = {
+              id: response.data.id,
+              name: response.data.name,
+              sprite: response.data.sprites.front_default,
+              types: response.data.types.map((t: any) => t.type.name),
+              // Spawn within 50m radius (much closer!)
+              latitude: location.latitude + (Math.random() - 0.5) * 0.0009,
+              longitude: location.longitude + (Math.random() - 0.5) * 0.0009,
+              biome: biome,
+            };
+            newPokemon.push(pokemon);
+          }
+        } catch (error) {
+          console.error(`Error fetching pokemon ${randomId}:`, error);
+          // Continue with other pokemon even if one fails
+        }
+      }
+
+      if (newPokemon.length > 0) {
+        setNearbyPokemon(prev => [...newPokemon, ...prev].slice(0, 20)); // Keep max 20 Pokemon
+
+        // Send notification for first spawn
+        if (huntMode) {
+          try {
+            PushNotification.localNotification({
+              channelId: 'pokemon-hunt',
+              title: 'Pokémon Nearby!',
+              message: `A wild ${newPokemon[0].name} appeared in the ${biome} area!`,
+              playSound: true,
+              soundName: 'default',
+            });
+          } catch (notifError) {
+            console.error('Error sending notification:', notifError);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in spawnNearbyPokemon:', error);
     }
   };
 
@@ -341,7 +425,7 @@ const GeolocationScreen = () => {
       </View>
 
       {/* Map View */}
-      {location ? (
+      {location && location.latitude && location.longitude ? (
         <MapView
           style={styles.map}
           initialRegion={{
@@ -351,7 +435,10 @@ const GeolocationScreen = () => {
             longitudeDelta: 0.01,
           }}
           showsUserLocation
-          showsMyLocationButton>
+          showsMyLocationButton
+          loadingEnabled={true}
+          loadingIndicatorColor="#007AFF"
+          loadingBackgroundColor="#f5f5f5">
 
           {/* Search radius circle */}
           <Circle
@@ -491,20 +578,13 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   markerContainer: {
-    backgroundColor: 'white',
-    borderRadius: 25,
-    padding: 5,
-    borderWidth: 3,
-    borderColor: '#FF6B6B',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   markerImage: {
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
+    resizeMode: 'contain',
   },
   encounterOverlay: {
     flex: 1,
