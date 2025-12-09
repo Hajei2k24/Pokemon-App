@@ -11,6 +11,8 @@ import PokedexScreen from '../screens/PokedexScreen';
 import PokemonDetailScreen from '../screens/PokemonDetailScreen';
 import ARCameraScreen from '../screens/ARCameraScreen';
 import GeolocationScreen from '../screens/GeolocationScreen';
+import ARHuntModeScreen from '../screens/ARHuntModeScreen';
+import GalleryScreen from '../screens/GalleryScreen';
 
 // Define navigation types
 export type RootStackParamList = {
@@ -28,6 +30,8 @@ export type RootStackParamList = {
   };
   Camera: undefined;
   Geolocation: undefined;
+  ARHuntMode: undefined;
+  Gallery: undefined;
 };
 
 export type LoginScreenProps = NativeStackScreenProps<RootStackParamList, 'Login'>;
@@ -37,6 +41,8 @@ export type PokedexScreenProps = NativeStackScreenProps<RootStackParamList, 'Pok
 export type PokemonDetailScreenProps = NativeStackScreenProps<RootStackParamList, 'PokemonDetail'>;
 export type CameraScreenProps = NativeStackScreenProps<RootStackParamList, 'Camera'>;
 export type GeolocationScreenProps = NativeStackScreenProps<RootStackParamList, 'Geolocation'>;
+export type ARHuntModeScreenProps = NativeStackScreenProps<RootStackParamList, 'ARHuntMode'>;
+export type GalleryScreenProps = NativeStackScreenProps<RootStackParamList, 'Gallery'>;
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -110,6 +116,38 @@ const MyStack: React.FC = () => {
             backgroundColor: '#FF9500',
           },
           headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            fontSize: 22,
+          },
+        }}
+      />
+      <Stack.Screen
+        name="ARHuntMode"
+        component={ARHuntModeScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'AR Hunt Mode',
+          headerStyle: {
+            backgroundColor: '#FF3B30',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            fontSize: 22,
+          },
+        }}
+      />
+      <Stack.Screen
+        name="Gallery"
+        component={GalleryScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'My Gallery',
+          headerStyle: {
+            backgroundColor: '#FF6B6B',
+          },
+          headerTintColor: '#FFDE00',
           headerTitleStyle: {
             fontWeight: 'bold',
             fontSize: 22,

@@ -1,10 +1,35 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { getAuth, signOut } from '@react-native-firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {useFocusEffect} from '@react-navigation/native';
 
 const HomeScreen = ({navigation}) => {
   const auth = getAuth();
   const user = auth.currentUser;
+  const [caughtCount, setCaughtCount] = useState(0);
+
+  // Load caught Pokemon count when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadCaughtCount();
+    }, [])
+  );
+
+  const loadCaughtCount = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('caughtPokemon');
+      if (stored) {
+        const pokemon = JSON.parse(stored);
+        setCaughtCount(pokemon.length);
+      } else {
+        setCaughtCount(0);
+      }
+    } catch (error) {
+      console.error('Error loading caught Pokemon count:', error);
+      setCaughtCount(0);
+    }
+  };
 
   const handleLogout = () => {
     signOut(auth)
@@ -81,10 +106,22 @@ const HomeScreen = ({navigation}) => {
               <Text style={styles.actionSubtitle}>Track Position</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.actionCard, styles.redCard]}>
-              <Text style={styles.actionIcon}>⚙️</Text>
-              <Text style={styles.actionTitle}>Settings</Text>
-              <Text style={styles.actionSubtitle}>Preferences</Text>
+            <TouchableOpacity
+              style={[styles.actionCard, styles.redCard]}
+              onPress={() => navigation.navigate('ARHuntMode')}
+            >
+              <Text style={styles.actionIcon}>🎯</Text>
+              <Text style={styles.actionTitle}>AR Hunt</Text>
+              <Text style={styles.actionSubtitle}>Catch Pokémon</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionCard, styles.purpleCard]}
+              onPress={() => navigation.navigate('Gallery')}
+            >
+              <Text style={styles.actionIcon}>🖼️</Text>
+              <Text style={styles.actionTitle}>Gallery</Text>
+              <Text style={styles.actionSubtitle}>My Collection</Text>
             </TouchableOpacity>
           </View>
 
@@ -93,7 +130,7 @@ const HomeScreen = ({navigation}) => {
             <Text style={styles.statsTitle}>Your Journey</Text>
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>0</Text>
+                <Text style={styles.statNumber}>{caughtCount}</Text>
                 <Text style={styles.statLabel}>Pokémon</Text>
               </View>
               <View style={styles.statDivider} />
@@ -272,6 +309,9 @@ const styles = StyleSheet.create({
   },
   greenCard: {
     backgroundColor: '#4CAF50',
+  },
+  purpleCard: {
+    backgroundColor: '#9C27B0',
   },
   actionIcon: {
     fontSize: 36,
