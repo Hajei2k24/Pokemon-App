@@ -9,6 +9,7 @@ import SignUpScreen from '../screens/SignUpScreen';
 import HomeScreen from '../screens/HomeScreen';
 import PokedexScreen from '../screens/PokedexScreen';
 import PokemonDetailScreen from '../screens/PokemonDetailScreen';
+import HuntModeScreen from '../screens/HuntModeScreen'; // ADD THIS
 
 // Define navigation types
 export type RootStackParamList = {
@@ -24,6 +25,7 @@ export type RootStackParamList = {
       types: string[];
     };
   };
+  HuntMode: undefined; // ADD THIS
 };
 
 export type LoginScreenProps = NativeStackScreenProps<RootStackParamList, 'Login'>;
@@ -31,6 +33,7 @@ export type SignUpScreenProps = NativeStackScreenProps<RootStackParamList, 'Sign
 export type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 export type PokedexScreenProps = NativeStackScreenProps<RootStackParamList, 'Pokedex'>;
 export type PokemonDetailScreenProps = NativeStackScreenProps<RootStackParamList, 'PokemonDetail'>;
+export type HuntModeScreenProps = NativeStackScreenProps<RootStackParamList, 'HuntMode'>; // ADD THIS
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -72,6 +75,22 @@ const MyStack: React.FC = () => {
             backgroundColor: '#3B4CCA',
           },
           headerTintColor: '#FFDE00',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            fontSize: 22,
+          },
+        }}
+      />
+      <Stack.Screen 
+        name="HuntMode" 
+        component={HuntModeScreen}
+        options={{
+          headerShown: true,
+          headerTitle: '🗺️ Hunt Mode',
+          headerStyle: {
+            backgroundColor: '#4CAF50',
+          },
+          headerTintColor: 'white',
           headerTitleStyle: {
             fontWeight: 'bold',
             fontSize: 22,

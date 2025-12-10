@@ -54,10 +54,11 @@ const HomeScreen = ({navigation}) => {
           {/* Quick Actions Grid */}
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
-            <TouchableOpacity style={[styles.actionCard, styles.redCard]}>
+            <TouchableOpacity style={[styles.actionCard, styles.redCard]}
+              onPress={() => navigation.navigate('HuntMode')}>
               <Text style={styles.actionIcon}>🎮</Text>
               <Text style={styles.actionTitle}>Play Game</Text>
-              <Text style={styles.actionSubtitle}>Start Battle</Text>
+              <Text style={styles.actionSubtitle}>Find Pokemon</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
