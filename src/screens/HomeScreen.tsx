@@ -3,16 +3,19 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { getAuth, signOut } from '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useFocusEffect} from '@react-navigation/native';
+import {PlayerStats, initializePlayerStats} from '../utils/gamification';
 
 const HomeScreen = ({navigation}) => {
   const auth = getAuth();
   const user = auth.currentUser;
   const [caughtCount, setCaughtCount] = useState(0);
+  const [badgeCount, setBadgeCount] = useState(0);
 
   // Load caught Pokemon count when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       loadCaughtCount();
+      loadBadgeCount();
     }, [])
   );
 
@@ -28,6 +31,22 @@ const HomeScreen = ({navigation}) => {
     } catch (error) {
       console.error('Error loading caught Pokemon count:', error);
       setCaughtCount(0);
+    }
+  };
+
+  const loadBadgeCount = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('playerStats');
+      if (stored) {
+        const stats: PlayerStats = JSON.parse(stored);
+        const unlockedBadges = stats.badges.filter(b => b.unlocked).length;
+        setBadgeCount(unlockedBadges);
+      } else {
+        setBadgeCount(0);
+      }
+    } catch (error) {
+      console.error('Error loading badge count:', error);
+      setBadgeCount(0);
     }
   };
 
@@ -98,20 +117,11 @@ const HomeScreen = ({navigation}) => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionCard, styles.yellowCard]}
+              style={[styles.actionCard, styles.redCard]}
               onPress={() => navigation.navigate('Geolocation')}
             >
-              <Text style={styles.actionIcon}>📍</Text>
-              <Text style={styles.actionTitle}>Location</Text>
-              <Text style={styles.actionSubtitle}>Track Position</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionCard, styles.redCard]}
-              onPress={() => navigation.navigate('ARHuntMode')}
-            >
               <Text style={styles.actionIcon}>🎯</Text>
-              <Text style={styles.actionTitle}>AR Hunt</Text>
+              <Text style={styles.actionTitle}>Hunt Pokemon</Text>
               <Text style={styles.actionSubtitle}>Catch Pokémon</Text>
             </TouchableOpacity>
 
@@ -120,8 +130,17 @@ const HomeScreen = ({navigation}) => {
               onPress={() => navigation.navigate('Gallery')}
             >
               <Text style={styles.actionIcon}>🖼️</Text>
-              <Text style={styles.actionTitle}>Gallery</Text>
-              <Text style={styles.actionSubtitle}>My Collection</Text>
+              <Text style={styles.actionTitle}>Pokémon Collection</Text>
+              <Text style={styles.actionSubtitle}>My Pokémons</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionCard, styles.goldCard]}
+              onPress={() => navigation.navigate('Progression')}
+            >
+              <Text style={styles.actionIcon}>🏆</Text>
+              <Text style={styles.actionTitle}>Progression</Text>
+              <Text style={styles.actionSubtitle}>Badges & XP</Text>
             </TouchableOpacity>
           </View>
 
@@ -140,7 +159,7 @@ const HomeScreen = ({navigation}) => {
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
-                <Text style={styles.statNumber}>0</Text>
+                <Text style={styles.statNumber}>{badgeCount}</Text>
                 <Text style={styles.statLabel}>Badges</Text>
               </View>
             </View>
@@ -304,24 +323,26 @@ const styles = StyleSheet.create({
   blueCard: {
     backgroundColor: '#3B4CCA',
   },
-  yellowCard: {
-    backgroundColor: '#FFDE00',
-  },
   greenCard: {
     backgroundColor: '#4CAF50',
   },
   purpleCard: {
     backgroundColor: '#9C27B0',
   },
+  goldCard: {
+    backgroundColor: '#FFA000',
+  },
   actionIcon: {
     fontSize: 36,
     marginBottom: 10,
   },
   actionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: 'white',
     marginBottom: 5,
+    textAlign: 'center',
+    
   },
   actionSubtitle: {
     fontSize: 12,

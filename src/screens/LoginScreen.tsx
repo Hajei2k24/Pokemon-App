@@ -80,7 +80,7 @@ const LoginScreen = ({navigation}) => {
                         </View>
                     </View>
 
-                    <MyTextInput
+                    <MyTextInput 
                         value={email}
                         onChangeText={text => setEmail(text)}
                         placeholder="Username"
@@ -151,6 +151,11 @@ const styles = StyleSheet.create({
         textShadowRadius: 1,
     },
     subtitle: {
+        fontSize: 16,
+        color: 'white',
+        marginTop: 5,
+    },
+    fieldtitle: {
         fontSize: 16,
         color: 'white',
         marginTop: 5,

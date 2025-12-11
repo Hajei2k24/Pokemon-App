@@ -34,7 +34,10 @@
       "Bash(gradlew.bat clean:*)",
       "Bash(timeout 30 adb logcat:*)",
       "Bash(adb uninstall:*)",
-      "Bash(timeout /t 2)"
+      "Bash(timeout /t 2)",
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(timeout:*)",
+      "Bash(del nul)"
     ],
     "deny": [],
     "ask": []

@@ -9,6 +9,7 @@ import {
   Modal,
   ScrollView,
   Dimensions,
+  Alert,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -81,6 +82,51 @@ const GalleryScreen = () => {
   const closeDetail = () => {
     setSelectedPokemon(null);
     setShowDetailModal(false);
+  };
+
+  const releasePokemon = async (pokemon: Pokemon) => {
+    Alert.alert(
+      `Release ${pokemon.name}?`,
+      'Are you sure you want to release this Pokémon? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Release',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Remove the Pokemon from the array
+              const updatedPokemon = caughtPokemon.filter(
+                (p, index) =>
+                  !(
+                    p.id === pokemon.id &&
+                    p.caughtAt === pokemon.caughtAt &&
+                    caughtPokemon.indexOf(p) === caughtPokemon.indexOf(pokemon)
+                  ),
+              );
+
+              // Save to AsyncStorage
+              await AsyncStorage.setItem(
+                'caughtPokemon',
+                JSON.stringify(updatedPokemon),
+              );
+
+              // Update state
+              setCaughtPokemon(updatedPokemon);
+
+              // Close the modal
+              closeDetail();
+            } catch (error) {
+              console.error('Error releasing Pokemon:', error);
+              Alert.alert('Error', 'Failed to release Pokémon. Please try again.');
+            }
+          },
+        },
+      ],
+    );
   };
 
   const renderPokemonCard = ({item}: {item: Pokemon}) => (
@@ -234,6 +280,14 @@ const GalleryScreen = () => {
                     </Text>
                   </View>
                 </View>
+
+                <TouchableOpacity
+                  style={styles.releaseButton}
+                  onPress={() => releasePokemon(selectedPokemon)}>
+                  <Text style={styles.releaseButtonText}>
+                    Release Pokémon
+                  </Text>
+                </TouchableOpacity>
               </ScrollView>
             )}
           </View>
@@ -458,5 +512,23 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     flex: 1,
     marginLeft: 10,
+  },
+  releaseButton: {
+    backgroundColor: '#FF4444',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 15,
+    marginTop: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  releaseButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

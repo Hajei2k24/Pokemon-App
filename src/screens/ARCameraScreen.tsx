@@ -12,6 +12,7 @@ import {
   FlatList,
   Dimensions,
   Modal,
+  PanResponder,
 } from 'react-native';
 import {Camera, useCameraDevice} from 'react-native-vision-camera';
 import Voice from '@react-native-voice/voice';
@@ -31,7 +32,57 @@ interface CapturedPhoto {
   uri: string;
   pokemon: Pokemon;
   timestamp: number;
+  pokemonPosition?: {
+    x: number;
+    y: number;
+  };
 }
+
+// Popular Pokemon list for dropdown (Gen 1-2 most popular)
+const POKEMON_LIST = [
+  'bulbasaur', 'ivysaur', 'venusaur', 'charmander', 'charmeleon', 'charizard',
+  'squirtle', 'wartortle', 'blastoise', 'caterpie', 'metapod', 'butterfree',
+  'weedle', 'kakuna', 'beedrill', 'pidgey', 'pidgeotto', 'pidgeot',
+  'rattata', 'raticate', 'spearow', 'fearow', 'ekans', 'arbok',
+  'pikachu', 'raichu', 'sandshrew', 'sandslash', 'nidoran-f', 'nidorina',
+  'nidoqueen', 'nidoran-m', 'nidorino', 'nidoking', 'clefairy', 'clefable',
+  'vulpix', 'ninetales', 'jigglypuff', 'wigglytuff', 'zubat', 'golbat',
+  'oddish', 'gloom', 'vileplume', 'paras', 'parasect', 'venonat',
+  'venomoth', 'diglett', 'dugtrio', 'meowth', 'persian', 'psyduck',
+  'golduck', 'mankey', 'primeape', 'growlithe', 'arcanine', 'poliwag',
+  'poliwhirl', 'poliwrath', 'abra', 'kadabra', 'alakazam', 'machop',
+  'machoke', 'machamp', 'bellsprout', 'weepinbell', 'victreebel', 'tentacool',
+  'tentacruel', 'geodude', 'graveler', 'golem', 'ponyta', 'rapidash',
+  'slowpoke', 'slowbro', 'magnemite', 'magneton', 'farfetchd', 'doduo',
+  'dodrio', 'seel', 'dewgong', 'grimer', 'muk', 'shellder',
+  'cloyster', 'gastly', 'haunter', 'gengar', 'onix', 'drowzee',
+  'hypno', 'krabby', 'kingler', 'voltorb', 'electrode', 'exeggcute',
+  'exeggutor', 'cubone', 'marowak', 'hitmonlee', 'hitmonchan', 'lickitung',
+  'koffing', 'weezing', 'rhyhorn', 'rhydon', 'chansey', 'tangela',
+  'kangaskhan', 'horsea', 'seadra', 'goldeen', 'seaking', 'staryu',
+  'starmie', 'mr-mime', 'scyther', 'jynx', 'electabuzz', 'magmar',
+  'pinsir', 'tauros', 'magikarp', 'gyarados', 'lapras', 'ditto',
+  'eevee', 'vaporeon', 'jolteon', 'flareon', 'porygon', 'omanyte',
+  'omastar', 'kabuto', 'kabutops', 'aerodactyl', 'snorlax', 'articuno',
+  'zapdos', 'moltres', 'dratini', 'dragonair', 'dragonite', 'mewtwo',
+  'mew', 'chikorita', 'bayleef', 'meganium', 'cyndaquil', 'quilava',
+  'typhlosion', 'totodile', 'croconaw', 'feraligatr', 'sentret', 'furret',
+  'hoothoot', 'noctowl', 'ledyba', 'ledian', 'spinarak', 'ariados',
+  'crobat', 'chinchou', 'lanturn', 'pichu', 'cleffa', 'igglybuff',
+  'togepi', 'togetic', 'natu', 'xatu', 'mareep', 'flaaffy',
+  'ampharos', 'bellossom', 'marill', 'azumarill', 'sudowoodo', 'politoed',
+  'hoppip', 'skiploom', 'jumpluff', 'aipom', 'sunkern', 'sunflora',
+  'yanma', 'wooper', 'quagsire', 'espeon', 'umbreon', 'murkrow',
+  'slowking', 'misdreavus', 'unown', 'wobbuffet', 'girafarig', 'pineco',
+  'forretress', 'dunsparce', 'gligar', 'steelix', 'snubbull', 'granbull',
+  'qwilfish', 'scizor', 'shuckle', 'heracross', 'sneasel', 'teddiursa',
+  'ursaring', 'slugma', 'magcargo', 'swinub', 'piloswine', 'corsola',
+  'remoraid', 'octillery', 'delibird', 'mantine', 'skarmory', 'houndour',
+  'houndoom', 'kingdra', 'phanpy', 'donphan', 'porygon2', 'stantler',
+  'smeargle', 'tyrogue', 'hitmontop', 'smoochum', 'elekid', 'magby',
+  'miltank', 'blissey', 'raikou', 'entei', 'suicune', 'larvitar',
+  'pupitar', 'tyranitar', 'lugia', 'ho-oh', 'celebi'
+];
 
 const ARCameraScreen = () => {
   const [hasPermission, setHasPermission] = useState(false);
@@ -44,9 +95,32 @@ const ARCameraScreen = () => {
   const [showGallery, setShowGallery] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<CapturedPhoto | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [filteredPokemon, setFilteredPokemon] = useState<string[]>([]);
+  const [pokemonPosition, setPokemonPosition] = useState({x: width / 2 - 100, y: height * 0.4 - 100});
 
   const camera = useRef<Camera>(null);
   const device = useCameraDevice('back');
+
+  // PanResponder for dragging Pokemon
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderMove: (_, gesture) => {
+        setPokemonPosition({
+          x: pokemonPosition.x + gesture.dx,
+          y: pokemonPosition.y + gesture.dy,
+        });
+      },
+      onPanResponderRelease: (_, gesture) => {
+        setPokemonPosition({
+          x: pokemonPosition.x + gesture.dx,
+          y: pokemonPosition.y + gesture.dy,
+        });
+      },
+    })
+  ).current;
 
   useEffect(() => {
     requestPermissions();
@@ -57,6 +131,9 @@ const ARCameraScreen = () => {
       try {
         Voice.onSpeechResults = onSpeechResults;
         Voice.onSpeechError = onSpeechError;
+        Voice.onSpeechStart = () => console.log('Speech recognition started');
+        Voice.onSpeechEnd = () => console.log('Speech recognition ended');
+        console.log('Voice handlers registered');
       } catch (error) {
         console.log('Voice setup error:', error);
       }
@@ -95,6 +172,29 @@ const ARCameraScreen = () => {
     }
   };
 
+  const handleSearchQueryChange = (query: string) => {
+    setSearchQuery(query);
+
+    if (query.trim().length > 0) {
+      // Filter Pokemon list based on query
+      const filtered = POKEMON_LIST.filter(pokemon =>
+        pokemon.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 10); // Limit to 10 results for better UX
+      setFilteredPokemon(filtered);
+      setShowDropdown(true);
+    } else {
+      // Show all Pokemon if search is empty
+      setFilteredPokemon(POKEMON_LIST.slice(0, 10));
+      setShowDropdown(true);
+    }
+  };
+
+  const selectPokemonFromDropdown = (name: string) => {
+    setSearchQuery(name);
+    setShowDropdown(false);
+    searchPokemon(name);
+  };
+
   const searchPokemon = async (name: string) => {
     if (!name.trim()) {
       Alert.alert('Error', 'Please enter a Pokémon name');
@@ -102,6 +202,7 @@ const ARCameraScreen = () => {
     }
 
     setIsSearching(true);
+    setShowDropdown(false);
     try {
       const response = await axios.get(
         `https://pokeapi.co/api/v2/pokemon/${name.toLowerCase().trim()}`
@@ -123,35 +224,72 @@ const ARCameraScreen = () => {
   const startVoiceSearch = async () => {
     try {
       setIsListening(true);
+      setShowDropdown(false);
+
+      console.log('Starting voice recognition...');
       await Voice.start('en-US');
-    } catch (error) {
+
+      Alert.alert('🎤 Listening', 'Speak a Pokémon name...', [
+        {
+          text: 'Cancel',
+          onPress: () => stopVoiceSearch(),
+          style: 'cancel',
+        },
+      ]);
+    } catch (error: any) {
       console.error('Voice error:', error);
       setIsListening(false);
+
+      Alert.alert(
+        'Voice Recognition Unavailable',
+        'Voice recognition is not available. Please use the text search box to find Pokémon.',
+        [{text: 'OK'}]
+      );
     }
   };
 
   const stopVoiceSearch = async () => {
     try {
-      await Voice.stop();
+      if (Voice) {
+        await Voice.stop();
+      }
       setIsListening(false);
     } catch (error) {
       console.error('Voice stop error:', error);
+      setIsListening(false);
     }
   };
 
   const onSpeechResults = (event: any) => {
+    setIsListening(false);
     if (event.value && event.value[0]) {
       const spokenText = event.value[0];
+      console.log('Voice recognized:', spokenText);
       setSearchQuery(spokenText);
-      searchPokemon(spokenText);
+
+      // Show what was recognized
+      Alert.alert(
+        '🎤 Recognized',
+        `Searching for: "${spokenText}"`,
+        [{text: 'OK', onPress: () => searchPokemon(spokenText)}]
+      );
+    } else {
+      Alert.alert('No Speech', 'No speech was detected. Please try again.');
     }
-    setIsListening(false);
   };
 
   const onSpeechError = (error: any) => {
     console.error('Speech error:', error);
     setIsListening(false);
-    Alert.alert('Voice Error', 'Could not recognize speech. Please try again.');
+
+    let errorMessage = 'Could not recognize speech. Please try again.';
+    if (error.error?.code === '7') {
+      errorMessage = 'No speech detected. Please speak clearly.';
+    } else if (error.error?.code === '9') {
+      errorMessage = 'Microphone permission denied. Please enable it in settings.';
+    }
+
+    Alert.alert('Voice Error', errorMessage);
   };
 
   const takePhoto = async () => {
@@ -196,6 +334,10 @@ const ARCameraScreen = () => {
           sprite: pokemonImagePath, // Store local path instead of URL
         },
         timestamp: Date.now(),
+        pokemonPosition: {
+          x: pokemonPosition.x,
+          y: pokemonPosition.y,
+        },
       };
 
       const newGallery = [capturedPhoto, ...gallery];
@@ -325,7 +467,14 @@ const ARCameraScreen = () => {
                     />
                     <Image
                       source={{uri: `file://${item.pokemon.sprite}`}}
-                      style={styles.galleryPokemonOverlay}
+                      style={[
+                        styles.galleryPokemonOverlay,
+                        item.pokemonPosition && {
+                          left: (item.pokemonPosition.x / width) * (width / 2 - 40),
+                          top: (item.pokemonPosition.y / height) * (width / 2 - 40),
+                          transform: undefined,
+                        },
+                      ]}
                     />
                     <Text style={styles.galleryPokemonName}>{item.pokemon.name}</Text>
                   </TouchableOpacity>
@@ -374,7 +523,14 @@ const ARCameraScreen = () => {
               />
               <Image
                 source={{uri: `file://${fullscreenImage.pokemon.sprite}`}}
-                style={styles.fullscreenPokemonOverlay}
+                style={[
+                  styles.fullscreenPokemonOverlay,
+                  fullscreenImage.pokemonPosition && {
+                    left: fullscreenImage.pokemonPosition.x,
+                    top: fullscreenImage.pokemonPosition.y,
+                    transform: undefined,
+                  },
+                ]}
                 resizeMode="contain"
               />
               <View style={styles.fullscreenInfo}>
@@ -401,7 +557,14 @@ const ARCameraScreen = () => {
           {selectedPokemon && (
             <Image
               source={{uri: selectedPokemon.sprite}}
-              style={styles.pokemonOverlay}
+              style={[
+                styles.pokemonOverlay,
+                {
+                  left: pokemonPosition.x,
+                  top: pokemonPosition.y,
+                  transform: undefined, // Remove default transform
+                },
+              ]}
               resizeMode="contain"
             />
           )}
@@ -426,15 +589,24 @@ const ARCameraScreen = () => {
             photo={true}
           />
 
-          {/* Pokemon Overlay */}
+          {/* Pokemon Overlay - Draggable */}
           {selectedPokemon && (
-            <View style={styles.arOverlay}>
+            <View
+              {...panResponder.panHandlers}
+              style={[
+                styles.arOverlay,
+                {
+                  left: pokemonPosition.x,
+                  top: pokemonPosition.y,
+                },
+              ]}>
               <Image
                 source={{uri: selectedPokemon.sprite}}
                 style={styles.pokemonAR}
                 resizeMode="contain"
               />
               <Text style={styles.pokemonName}>{selectedPokemon.name.toUpperCase()}</Text>
+              <Text style={styles.dragHint}>👆 Drag to move</Text>
             </View>
           )}
 
@@ -446,7 +618,12 @@ const ARCameraScreen = () => {
                 placeholder="Search Pokémon..."
                 placeholderTextColor="#999"
                 value={searchQuery}
-                onChangeText={setSearchQuery}
+                onChangeText={handleSearchQueryChange}
+                onFocus={() => {
+                  // Show dropdown with initial Pokemon when focused
+                  setFilteredPokemon(POKEMON_LIST.slice(0, 10));
+                  setShowDropdown(true);
+                }}
                 onSubmitEditing={() => searchPokemon(searchQuery)}
               />
               <TouchableOpacity
@@ -466,6 +643,35 @@ const ARCameraScreen = () => {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* Dropdown List */}
+            {showDropdown && !selectedPokemon && (
+              <View style={styles.dropdown}>
+                <FlatList
+                  data={filteredPokemon}
+                  keyExtractor={(item, index) => `${item}-${index}`}
+                  style={styles.dropdownList}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({item}) => (
+                    <TouchableOpacity
+                      style={styles.dropdownItem}
+                      onPress={() => selectPokemonFromDropdown(item)}>
+                      <Text style={styles.dropdownItemText}>
+                        {item.charAt(0).toUpperCase() + item.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  ListEmptyComponent={
+                    <Text style={styles.dropdownEmpty}>No Pokémon found</Text>
+                  }
+                />
+                <TouchableOpacity
+                  style={styles.dropdownClose}
+                  onPress={() => setShowDropdown(false)}>
+                  <Text style={styles.dropdownCloseText}>Close ✕</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {selectedPokemon && (
               <View style={styles.selectedPokemon}>
@@ -579,15 +785,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   selectedSprite: {
-    width: 50,
+    width: 100,
     height: 50,
   },
   selectedName: {
     flex: 1,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#000',
-    marginLeft: 10,
+    marginLeft: -10,
     textTransform: 'capitalize',
   },
   clearText: {
@@ -597,10 +803,8 @@ const styles = StyleSheet.create({
   },
   arOverlay: {
     position: 'absolute',
-    top: '40%',
-    left: '50%',
-    transform: [{translateX: -100}, {translateY: -100}],
     alignItems: 'center',
+    width: 200,
   },
   pokemonAR: {
     width: 200,
@@ -613,6 +817,15 @@ const styles = StyleSheet.create({
     textShadowColor: '#000',
     textShadowOffset: {width: 2, height: 2},
     textShadowRadius: 5,
+  },
+  dragHint: {
+    color: '#fff',
+    fontSize: 12,
+    marginTop: 5,
+    textShadowColor: '#000',
+    textShadowOffset: {width: 1, height: 1},
+    textShadowRadius: 3,
+    opacity: 0.8,
   },
   controls: {
     position: 'absolute',
@@ -676,11 +889,8 @@ const styles = StyleSheet.create({
   },
   pokemonOverlay: {
     position: 'absolute',
-    top: '40%',
-    left: '50%',
-    width: 200,
-    height: 200,
-    transform: [{translateX: -100}, {translateY: -100}],
+    width: 250,
+    height: 250,
   },
   bottomControls: {
     position: 'absolute',
@@ -767,11 +977,8 @@ const styles = StyleSheet.create({
   },
   galleryPokemonOverlay: {
     position: 'absolute',
-    top: '35%',
-    left: '50%',
     width: 80,
     height: 80,
-    transform: [{translateX: -40}, {translateY: -40}],
   },
   fullscreenModal: {
     flex: 1,
@@ -824,11 +1031,8 @@ const styles = StyleSheet.create({
   },
   fullscreenPokemonOverlay: {
     position: 'absolute',
-    top: '40%',
-    left: '50%',
     width: 250,
     height: 250,
-    transform: [{translateX: -125}, {translateY: -125}],
   },
   fullscreenInfo: {
     position: 'absolute',
@@ -851,6 +1055,47 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 16,
     marginTop: 5,
+  },
+  dropdown: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 10,
+    marginTop: 10,
+    maxHeight: 300,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  dropdownList: {
+    maxHeight: 250,
+  },
+  dropdownItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: '#000',
+  },
+  dropdownEmpty: {
+    padding: 20,
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 14,
+  },
+  dropdownClose: {
+    padding: 12,
+    backgroundColor: '#f0f0f0',
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
+    alignItems: 'center',
+  },
+  dropdownCloseText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });
 

@@ -13,6 +13,7 @@ import ARCameraScreen from '../screens/ARCameraScreen';
 import GeolocationScreen from '../screens/GeolocationScreen';
 import ARHuntModeScreen from '../screens/ARHuntModeScreen';
 import GalleryScreen from '../screens/GalleryScreen';
+import ProgressionScreen from '../screens/ProgressionScreen';
 
 // Define navigation types
 export type RootStackParamList = {
@@ -30,8 +31,20 @@ export type RootStackParamList = {
   };
   Camera: undefined;
   Geolocation: undefined;
-  ARHuntMode: undefined;
+  ARHuntMode: {
+    targetPokemon?: {
+      id: number;
+      name: string;
+      sprite: string;
+      types: string[];
+      latitude: number;
+      longitude: number;
+      biome: string;
+      distance?: number;
+    };
+  };
   Gallery: undefined;
+  Progression: undefined;
 };
 
 export type LoginScreenProps = NativeStackScreenProps<RootStackParamList, 'Login'>;
@@ -43,6 +56,7 @@ export type CameraScreenProps = NativeStackScreenProps<RootStackParamList, 'Came
 export type GeolocationScreenProps = NativeStackScreenProps<RootStackParamList, 'Geolocation'>;
 export type ARHuntModeScreenProps = NativeStackScreenProps<RootStackParamList, 'ARHuntMode'>;
 export type GalleryScreenProps = NativeStackScreenProps<RootStackParamList, 'Gallery'>;
+export type ProgressionScreenProps = NativeStackScreenProps<RootStackParamList, 'Progression'>;
 
 const Stack = createStackNavigator<RootStackParamList>();
 
@@ -152,6 +166,13 @@ const MyStack: React.FC = () => {
             fontWeight: 'bold',
             fontSize: 22,
           },
+        }}
+      />
+      <Stack.Screen
+        name="Progression"
+        component={ProgressionScreen}
+        options={{
+          headerShown: false,
         }}
       />
     </Stack.Navigator>
